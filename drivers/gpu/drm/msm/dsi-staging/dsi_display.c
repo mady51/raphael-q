@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -18,8 +18,6 @@
 #include <linux/of.h>
 #include <linux/of_gpio.h>
 #include <linux/err.h>
-
-#include <linux/msm_drm_notify.h>
 
 #include "msm_drv.h"
 #include "sde_connector.h"
@@ -226,19 +224,10 @@ int dsi_display_set_backlight(struct drm_connector *connector,
 		goto error;
 	}
 
-	if (drm_dev && (drm_dev->doze_state == MSM_DRM_BLANK_LP1 || drm_dev->doze_state == MSM_DRM_BLANK_LP2)) {
-		rc = dsi_panel_set_doze_backlight(display, (u32)bl_temp);
-		if (rc)
-			pr_err("unable to set doze backlight\n");
-		rc = dsi_panel_enable_doze_backlight(panel, (u32)bl_temp);
-		if (rc)
-			pr_err("unable to enable doze backlight\n");
-	} else {
-		drm_dev->doze_brightness = DOZE_BRIGHTNESS_INVALID;
-		rc = dsi_panel_set_backlight(panel, (u32)bl_temp);
-		if (rc)
-			pr_err("unable to set backlight\n");
-	}
+	rc = dsi_panel_set_backlight(panel, (u32)bl_temp);
+	if (rc)
+		pr_err("unable to set backlight\n");
+
 	rc = dsi_display_clk_ctrl(dsi_display->dsi_clk_handle,
 			DSI_CORE_CLK, DSI_CLK_OFF);
 	if (rc) {
@@ -1086,8 +1075,6 @@ int dsi_display_set_power(struct drm_connector *connector,
 		int power_mode, void *disp)
 {
 	struct dsi_display *display = disp;
-	struct msm_drm_notifier notify_data;
-	int event = power_mode;
 	int rc = 0;
 
 	if (!display || !display->panel) {
@@ -1095,32 +1082,17 @@ int dsi_display_set_power(struct drm_connector *connector,
 		return -EINVAL;
 	}
 
-        if (!connector || !connector->dev) {
-                pr_err("invalid connector/dev\n");
-                return -EINVAL;
-        } else {
-                dev = connector->dev;
-                event = dev->doze_state;
-        }
-
 	switch (power_mode) {
 	case SDE_MODE_DPMS_LP1:
-		msm_drm_notifier_call_chain(MSM_DRM_EARLY_EVENT_BLANK, &notify_data);
 		rc = dsi_panel_set_lp1(display->panel);
-		msm_drm_notifier_call_chain(MSM_DRM_EVENT_BLANK, &g_notify_data);
 		break;
 	case SDE_MODE_DPMS_LP2:
-		msm_drm_notifier_call_chain(MSM_DRM_EARLY_EVENT_BLANK, &notify_data);
 		rc = dsi_panel_set_lp2(display->panel);
-		msm_drm_notifier_call_chain(MSM_DRM_EVENT_BLANK, &g_notify_data);
 		break;
 	case SDE_MODE_DPMS_ON:
 		if (display->panel->power_mode == SDE_MODE_DPMS_LP1 ||
-			display->panel->power_mode == SDE_MODE_DPMS_LP2) {
-			msm_drm_notifier_call_chain(MSM_DRM_EARLY_EVENT_BLANK, &notify_data);
+			display->panel->power_mode == SDE_MODE_DPMS_LP2)
 			rc = dsi_panel_set_nolp(display->panel);
-			msm_drm_notifier_call_chain(MSM_DRM_EVENT_BLANK, &g_notify_data);
-		}
 		break;
 	case SDE_MODE_DPMS_OFF:
 	default:
