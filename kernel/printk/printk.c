@@ -813,18 +813,13 @@ static ssize_t devkmsg_write(struct kiocb *iocb, struct iov_iter *from)
 			endp++;
 			len -= endp - line;
 			line = endp;
-			/* QG-D */
-			if (line[0] == 'h') {
-				for (u = 0; u < 10; ++u) {
-					if (line[u] == 'd')
-						goto free;
-				}
-			}
+			if (strstr(line, "healthd") || strstr(line, "cacert") || !strcmp(line, "CP: Couldn't"))
+			goto free;
 		}
 	}
 
 	printk_emit(facility, level, NULL, 0, "%s", line);
-free:
+	free:
 	kfree(buf);
 	return ret;
 }
