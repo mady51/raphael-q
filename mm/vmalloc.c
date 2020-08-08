@@ -2927,8 +2927,6 @@ int remap_vmalloc_range_partial(struct vm_area_struct *vma, unsigned long uaddr,
 	unsigned long off;
 	unsigned long end_index;
 
-	if (check_shl_overflow(pgoff, PAGE_SHIFT, &off))
-		return -EINVAL;
 
 	size = PAGE_ALIGN(size);
 
@@ -2942,9 +2940,6 @@ int remap_vmalloc_range_partial(struct vm_area_struct *vma, unsigned long uaddr,
 	if (!(area->flags & VM_USERMAP))
 		return -EINVAL;
 
-	if (check_add_overflow(size, off, &end_index) ||
-	    end_index > get_vm_area_size(area))
-		return -EINVAL;
 	kaddr += off;
 
 	do {
